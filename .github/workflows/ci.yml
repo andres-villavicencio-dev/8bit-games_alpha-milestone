@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check GDScript syntax
+        run: |
+          echo "GDScript lint check placeholder"
+          # Future: gdtoolkit linter
+
+  export-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Godot export dry-run
+        run: |
+          echo "Export check placeholder"
+          # Future: godot --headless --export-debug "Web" build/index.html
