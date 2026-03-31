@@ -7,20 +7,36 @@ on:
     branches: [main]
 
 jobs:
-  lint:
+  gdscript-lint:
+    name: GDScript Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check GDScript syntax
-        run: |
-          echo "GDScript lint check placeholder"
-          # Future: gdtoolkit linter
+      - name: Install gdtoolkit
+        run: pip install gdtoolkit
+      - name: Lint GDScript files
+        run: gdlint game/src/**/*.gd
 
-  export-check:
+  export-web:
+    name: Export Web Build
     runs-on: ubuntu-latest
+    needs: gdscript-lint
     steps:
       - uses: actions/checkout@v4
-      - name: Godot export dry-run
+        with:
+          lfs: true
+      - name: Setup Godot
+        uses: chickensoft-games/setup-godot@v1
+        with:
+          version: 4.2.2
+          use-dotnet: false
+          include-templates: true
+      - name: Export Web
         run: |
-          echo "Export check placeholder"
-          # Future: godot --headless --export-debug "Web" build/index.html
+          mkdir -p build/web
+          godot --headless --export-release "Web" build/web/index.html
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web/
