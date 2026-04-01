@@ -82,6 +82,26 @@
             95% { opacity: 0.9; }
         }
 
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes damage-flash {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(2) sepia(1) hue-rotate(-50deg); }
+        }
+
+        .shake { animation: shake 0.3s ease-in-out; }
+        .pulse { animation: pulse 0.5s ease-in-out; }
+        .damage-flash { animation: damage-flash 0.2s ease-in-out; }
+
         .btn {
             font-family: 'Press Start 2P', monospace;
             font-size: 12px;
@@ -450,11 +470,38 @@
             transition: width 0.3s;
         }
 
+        .hp-bar-fill.medium {
+            background: #ffaa00;
+        }
+
+        .hp-bar-fill.high {
+            background: #44ff44;
+        }
+
+        #sound-toggle {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 50;
+            font-size: 8px;
+            padding: 5px 8px;
+            background: #2a2a4a;
+            color: #aaa;
+            border: 2px solid #4a4a6a;
+            cursor: pointer;
+        }
+
+        #sound-toggle:hover {
+            background: #3a3a5a;
+            color: #fff;
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
     <div id="game-container">
+        <button id="sound-toggle" onclick="toggleSound()">SOUND: OFF</button>
         <div id="game-screen">
             <div id="title-screen" class="screen active">
                 <h1>DARKSTONE CAVERN</h1>
@@ -485,6 +532,7 @@
                             <div id="enemy-stats"></div>
                         </div>
                         <div id="combat-log"></div>
+                        <div id="npc-display" class="hidden" style="margin-top: 15px; text-align: center;"></div>
                     </div>
 
                     <div id="sidebar">
@@ -559,9 +607,10 @@
             },
             grand_chamber: {
                 name: 'Grand Chamber',
-                desc: 'A vast cavern with glowing crystals. Paths lead in all directions.',
+                desc: 'A vast cavern with glowing crystals. A mysterious sage offers wisdom.',
                 connections: { north: 'western_corridor', northeast: 'entrance', east: 'eastern_passage', south: 'boss_lair', west: 'treasure_vault' },
                 hasEnemy: false,
+                hasNPC: true,
                 visited: false
             },
             treasure_vault: {
@@ -583,12 +632,30 @@
             }
         };
 
+        const NPCS = {
+            sage: {
+                name: 'Mysterious Sage',
+                greeting: 'Greetings, brave adventurer. I am the Keeper of Ancient Wisdom.',
+                hints: [
+                    'The Dark Knight fears those who explore every corner of this cavern.',
+                    'Steel yourself before battle - potions bought in haste are wasted gold.',
+                    'Three guardians protect this place. Defeat them all before facing the Knight.',
+                    'The treasure vault holds items worthy of a hero - if you survive the boss.'
+                ],
+                sprite: '🧙',
+                color: '#aa88ff'
+            }
+        };
+
         const ITEMS = {
-            health_potion: { name: 'Health Potion', type: 'consumable', effect: 'hp', value: 30, desc: 'Restores 30 HP' },
-            super_potion: { name: 'Super Potion', type: 'consumable', effect: 'hp', value: 60, desc: 'Restores 60 HP' },
-            iron_sword: { name: 'Iron Sword', type: 'weapon', effect: 'atk', value: 3, desc: '+3 Attack' },
-            steel_shield: { name: 'Steel Shield', type: 'armor', effect: 'def', value: 3, desc: '+3 Defense' },
-            power_amulet: { name: 'Power Amulet', type: 'accessory', effect: 'atk', value: 2, desc: '+2 Attack' }
+            health_potion: { name: 'Health Potion', type: 'consumable', effect: 'hp', value: 30, desc: 'Restores 30 HP', emoji: '🧪' },
+            super_potion: { name: 'Super Potion', type: 'consumable', effect: 'hp', value: 60, desc: 'Restores 60 HP', emoji: '🧴' },
+            mega_potion: { name: 'Mega Potion', type: 'consumable', effect: 'hp', value: 100, desc: 'Fully restores HP', emoji: '⚗️' },
+            iron_sword: { name: 'Iron Sword', type: 'weapon', effect: 'atk', value: 3, desc: '+3 Attack', emoji: '🗡️' },
+            steel_shield: { name: 'Steel Shield', type: 'armor', effect: 'def', value: 3, desc: '+3 Defense', emoji: '🛡️' },
+            power_amulet: { name: 'Power Amulet', type: 'accessory', effect: 'atk', value: 2, desc: '+2 Attack', emoji: '📿' },
+            guardian_ring: { name: 'Guardian Ring', type: 'accessory', effect: 'def', value: 2, desc: '+2 Defense', emoji: '💍' },
+            elixir: { name: 'Elixir', type: 'consumable', effect: 'all', value: 20, desc: '+20 ATK & DEF', emoji: '✨' }
         };
 
         const BOSS_DIALOGUE = {
@@ -634,24 +701,103 @@
             dialogueIndex: 0
         };
 
-        let storyContent = `You are a brave adventurer who has heard whispers of the legendary Darkstone Cavern.
+        let soundEnabled = false;
+        let audioCtx = null;
 
-Deep within these ancient tunnels lies untold treasure guarded by the infamous Dark Knight - a warrior of unholy power who has terrorized the land for centuries.
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
 
-Many have entered seeking glory and riches. None have returned.
+        function playSound(type) {
+            if (!soundEnabled || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                switch(type) {
+                    case 'attack':
+                        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+                        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                        osc.start(audioCtx.currentTime);
+                        osc.stop(audioCtx.currentTime + 0.1);
+                        break;
+                    case 'hit':
+                        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.15);
+                        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                        osc.start(audioCtx.currentTime);
+                        osc.stop(audioCtx.currentTime + 0.15);
+                        break;
+                    case 'heal':
+                        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.2);
+                        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                        osc.start(audioCtx.currentTime);
+                        osc.stop(audioCtx.currentTime + 0.2);
+                        break;
+                    case 'victory':
+                        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                        osc.frequency.setValueAtTime(500, audioCtx.currentTime + 0.1);
+                        osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.2);
+                        osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.3);
+                        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                        osc.start(audioCtx.currentTime);
+                        osc.stop(audioCtx.currentTime + 0.5);
+                        break;
+                    case 'death':
+                        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.5);
+                        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                        osc.start(audioCtx.currentTime);
+                        osc.stop(audioCtx.currentTime + 0.5);
+                        break;
+                    case 'potion':
+                        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                        osc.frequency.setValueAtTime(450, audioCtx.currentTime + 0.1);
+                        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                        osc.start(audioCtx.currentTime);
+                        osc.stop(audioCtx.currentTime + 0.15);
+                        break;
+                }
+            } catch(e) {}
+        }
 
-Today, you stand at the entrance, torch in hand, ready to face whatever horrors await within.
+        function toggleSound() {
+            initAudio();
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-toggle').textContent = soundEnabled ? 'SOUND: ON' : 'SOUND: OFF';
+        }
 
-The darkness seems to pulse with malevolent energy as you take your first step inside...
+        function updateUI() {
+            document.getElementById('room-name').textContent = ROOMS[gameState.currentRoom].name;
+            document.getElementById('room-desc').textContent = ROOMS[gameState.currentRoom].desc;
+            document.getElementById('stat-hp').textContent = `${gameState.player.hp}/${gameState.player.maxHp}`;
+            document.getElementById('stat-atk').textContent = gameState.player.atk;
+            document.getElementById('stat-def').textContent = gameState.player.def;
+            
+            const hpPercent = (gameState.player.hp / gameState.player.maxHp) * 100;
+            const hpBar = document.getElementById('hp-bar-fill');
+            hpBar.style.width = `${hpPercent}%`;
+            hpBar.classList.remove('medium', 'high');
+            if (hpPercent > 60) hpBar.classList.add('high');
+            else if (hpPercent > 30) hpBar.classList.add('medium');
 
-Your quest: Explore the cavern, defeat its guardians, and face the Dark Knight!
-
-Will you emerge victorious, or will the cavern claim another soul?`;
-
-        function startGame() {
-            document.getElementById('title-screen').classList.remove('active');
-            document.getElementById('story-screen').classList.add('active');
-            document.getElementById('story-text').textContent = storyContent;
+            updateInventory();
+            updateMap();
+            updateNavigation();
+            checkRoomEnemy();
+            updateActions();
         }
 
         function showControls() {
@@ -783,6 +929,43 @@ Will you emerge victorious, or will the cavern claim another soul?`;
                 gameState.inCombat = false;
                 combatLog.innerHTML = '';
             }
+            
+            checkRoomNPC();
+        }
+
+        function checkRoomNPC() {
+            const room = ROOMS[gameState.currentRoom];
+            const npcDisplay = document.getElementById('npc-display');
+            
+            if (room.hasNPC && NPCS.sage) {
+                npcDisplay.classList.remove('hidden');
+                npcDisplay.innerHTML = `
+                    <div style="background: rgba(0,0,0,0.9); border: 2px solid ${NPCS.sage.color}; padding: 10px; max-width: 300px;">
+                        <div style="font-size: 24px; margin-bottom: 5px;">${NPCS.sage.sprite}</div>
+                        <div style="color: ${NPCS.sage.color}; font-size: 8px; margin-bottom: 8px;">${NPCS.sage.name}</div>
+                        <div style="color: #aaa; font-size: 7px; line-height: 1.6;">${NPCS.sage.greeting}</div>
+                        <button onclick="talkToSage()" style="margin-top: 8px; font-family: 'Press Start 2P', monospace; font-size: 7px; padding: 5px 10px; background: ${NPCS.sage.color}; color: #000; border: none; cursor: pointer;">TALK</button>
+                    </div>
+                `;
+            } else {
+                npcDisplay.classList.add('hidden');
+            }
+        }
+
+        let sageHintIndex = 0;
+        function talkToSage() {
+            const hints = NPCS.sage.hints;
+            const npcDisplay = document.getElementById('npc-display');
+            npcDisplay.innerHTML = `
+                <div style="background: rgba(0,0,0,0.95); border: 2px solid ${NPCS.sage.color}; padding: 10px; max-width: 300px;">
+                    <div style="font-size: 24px; margin-bottom: 5px;">${NPCS.sage.sprite}</div>
+                    <div style="color: ${NPCS.sage.color}; font-size: 8px; margin-bottom: 8px;">${NPCS.sage.name}</div>
+                    <div style="color: #aaa; font-size: 7px; line-height: 1.6; font-style: italic;">"${hints[sageHintIndex]}"</div>
+                    <div style="color: #666; font-size: 6px; margin-top: 5px;">(${sageHintIndex + 1}/${hints.length})</div>
+                    <button onclick="talkToSage()" style="margin-top: 8px; font-family: 'Press Start 2P', monospace; font-size: 7px; padding: 5px 10px; background: ${NPCS.sage.color}; color: #000; border: none; cursor: pointer;">NEXT</button>
+                </div>
+            `;
+            sageHintIndex = (sageHintIndex + 1) % hints.length;
         }
 
         function showBossDialogue(type) {
@@ -801,6 +984,7 @@ Will you emerge victorious, or will the cavern claim another soul?`;
         function attack() {
             if (!gameState.inCombat || !gameState.currentEnemy) return;
 
+            initAudio();
             const log = document.getElementById('combat-log');
             const playerAtk = gameState.player.atk;
             const enemyDef = gameState.currentEnemy.def;
@@ -808,11 +992,18 @@ Will you emerge victorious, or will the cavern claim another soul?`;
 
             gameState.currentEnemy.hp -= playerDmg;
             log.innerHTML += `<span class="log-info">You attack for <span class="log-damage">${playerDmg}</span> damage!</span><br>`;
+            playSound('attack');
+
+            const enemySprite = document.getElementById('enemy-sprite');
+            enemySprite.classList.add('damage-flash');
+            setTimeout(() => enemySprite.classList.remove('damage-flash'), 200);
 
             if (gameState.currentEnemy.hp <= 0) {
                 handleVictory();
             } else {
-                enemyAttack();
+                setTimeout(() => {
+                    enemyAttack();
+                }, 500);
             }
             document.getElementById('enemy-stats').textContent =
                 `${gameState.currentEnemy.name}: ${gameState.currentEnemy.hp} HP`;
@@ -826,6 +1017,11 @@ Will you emerge victorious, or will the cavern claim another soul?`;
 
             gameState.player.hp -= enemyDmg;
             log.innerHTML += `<span class="log-info">${gameState.currentEnemy.name} strikes for <span class="log-damage">${enemyDmg}</span> damage!</span><br>`;
+            playSound('hit');
+
+            const playerSprite = document.getElementById('player-sprite');
+            playerSprite.classList.add('shake');
+            setTimeout(() => playerSprite.classList.remove('shake'), 300);
 
             if (gameState.player.hp <= 0) {
                 handleDeath();
@@ -846,6 +1042,7 @@ Will you emerge victorious, or will the cavern claim another soul?`;
                 gameState.bossDefeated = true;
                 gameState.inCombat = false;
                 ROOMS[gameState.currentRoom].hasEnemy = false;
+                playSound('victory');
 
                 setTimeout(() => {
                     showEnding('victory');
@@ -857,6 +1054,7 @@ Will you emerge victorious, or will the cavern claim another soul?`;
                 gameState.currentEnemy = null;
                 ROOMS[gameState.currentRoom].hasEnemy = false;
                 document.getElementById('enemy-display').classList.add('hidden');
+                playSound('victory');
 
                 if (room.isTreasure) {
                     giveTreasure();
@@ -867,14 +1065,15 @@ Will you emerge victorious, or will the cavern claim another soul?`;
         }
 
         function giveTreasure() {
-            const treasures = ['super_potion', 'iron_sword', 'steel_shield', 'power_amulet', 'health_potion'];
+            const treasures = ['super_potion', 'iron_sword', 'steel_shield', 'power_amulet', 'health_potion', 'mega_potion', 'guardian_ring', 'elixir'];
             const found = treasures[Math.floor(Math.random() * treasures.length)];
             gameState.player.inventory.push(found);
             const log = document.getElementById('combat-log');
-            log.innerHTML += `<span class="log-heal">Found: ${ITEMS[found].name}!</span><br>`;
+            log.innerHTML += `<span class="log-heal">Found: ${ITEMS[found].emoji} ${ITEMS[found].name}!</span><br>`;
         }
 
         function handleDeath() {
+            playSound('death');
             showEnding('death');
         }
 
@@ -916,15 +1115,27 @@ Will you emerge victorious, or will the cavern claim another soul?`;
                 const healAmount = Math.min(item.value, gameState.player.maxHp - gameState.player.hp);
                 gameState.player.hp += healAmount;
                 log.innerHTML += `<span class="log-heal">Used ${item.name}! Restored ${healAmount} HP!</span><br>`;
+                playSound('potion');
                 document.getElementById('stat-hp').textContent = `${gameState.player.hp}/${gameState.player.maxHp}`;
                 document.getElementById('hp-bar-fill').style.width = `${(gameState.player.hp / gameState.player.maxHp) * 100}%`;
             } else if (item.effect === 'atk') {
                 gameState.player.atk += item.value;
                 log.innerHTML += `<span class="log-info">Equipped ${item.name}! ATK +${item.value}!</span><br>`;
+                playSound('heal');
                 document.getElementById('stat-atk').textContent = gameState.player.atk;
             } else if (item.effect === 'def') {
                 gameState.player.def += item.value;
                 log.innerHTML += `<span class="log-info">Equipped ${item.name}! DEF +${item.value}!</span><br>`;
+                playSound('heal');
+                document.getElementById('stat-def').textContent = gameState.player.def;
+            } else if (item.effect === 'all') {
+                gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + item.value);
+                gameState.player.atk += item.value;
+                gameState.player.def += item.value;
+                log.innerHTML += `<span class="log-info">Used ${item.name}! +${item.value} ATK & DEF!</span><br>`;
+                playSound('heal');
+                document.getElementById('stat-hp').textContent = `${gameState.player.hp}/${gameState.player.maxHp}`;
+                document.getElementById('stat-atk').textContent = gameState.player.atk;
                 document.getElementById('stat-def').textContent = gameState.player.def;
             }
 
