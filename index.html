@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darkstone Cavern - 8-Bit RPG</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            font-family: 'Press Start 2P', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 800px;
+            height: 600px;
+            background: #1a1a2e;
+            border: 4px solid #4a4a6a;
+            box-shadow: 0 0 20px rgba(100, 100, 200, 0.3);
+            position: relative;
+            image-rendering: pixelated;
+        }
+
+        #game-screen {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        #title-screen {
+            background: linear-gradient(180deg, #0a0a1a 0%, #1a1a3a 50%, #0a0a2a 100%);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        #title-screen h1 {
+            font-size: 28px;
+            color: #ff6b6b;
+            text-shadow: 4px 4px 0 #4a0a0a, 0 0 20px #ff0000;
+            margin-bottom: 10px;
+            animation: flicker 3s infinite;
+        }
+
+        #title-screen h2 {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 60px;
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            92% { opacity: 1; }
+            93% { opacity: 0.8; }
+            94% { opacity: 1; }
+            95% { opacity: 0.9; }
+        }
+
+        .btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 12px;
+            padding: 15px 30px;
+            background: #2a2a4a;
+            color: #00ff88;
+            border: 3px solid #00ff88;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.1s;
+        }
+
+        .btn:hover {
+            background: #00ff88;
+            color: #0a0a0a;
+            box-shadow: 0 0 15px #00ff88;
+        }
+
+        #story-screen {
+            background: #0a0a1a;
+        }
+
+        #story-text {
+            flex: 1;
+            font-size: 10px;
+            line-height: 2.5;
+            color: #c0c0c0;
+            padding: 20px;
+            background: #0a0a0a;
+            border: 2px solid #3a3a5a;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        #game-screen-main {
+            background: #0a0a1a;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 10px;
+            padding: 15px;
+        }
+
+        #room-info {
+            background: #1a1a2a;
+            padding: 10px 15px;
+            border: 2px solid #4a4a6a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #room-name {
+            color: #ffaa00;
+            font-size: 12px;
+        }
+
+        #room-desc {
+            color: #888;
+            font-size: 8px;
+        }
+
+        #main-area {
+            display: grid;
+            grid-template-columns: 1fr 200px;
+            gap: 15px;
+        }
+
+        #dungeon-view {
+            background: #0a0a0a;
+            border: 3px solid #3a3a5a;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #dungeon-view .pixel-art {
+            width: 64px;
+            height: 64px;
+            background: #2a2a4a;
+            border: 2px solid #4a4a6a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            margin: 5px;
+        }
+
+        #player-sprite {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(180deg, #4488ff 0%, #2266cc 100%);
+            border: 3px solid #88ccff;
+            box-shadow: 0 0 10px #4488ff;
+        }
+
+        #enemy-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        #enemy-sprite {
+            width: 64px;
+            height: 64px;
+            background: #3a3a5a;
+            border: 3px solid #6a6a8a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+        }
+
+        .enemy-slime { background: linear-gradient(180deg, #44ff44 0%, #22aa22 100%); border-color: #88ff88; }
+        .enemy-archer { background: linear-gradient(180deg, #dddddd 0%, #999999 100%); border-color: #ffffff; }
+        .enemy-knight { background: linear-gradient(180deg, #444466 0%, #222233 100%); border-color: #8888aa; box-shadow: 0 0 15px #6666aa; }
+
+        #enemy-stats {
+            margin-top: 10px;
+            font-size: 8px;
+            color: #ff6666;
+        }
+
+        #sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #player-stats {
+            background: #1a1a2a;
+            border: 2px solid #4a4a6a;
+            padding: 10px;
+            font-size: 8px;
+        }
+
+        #player-stats h3 {
+            color: #00ff88;
+            font-size: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #3a3a5a;
+            padding-bottom: 5px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            color: #aaa;
+        }
+
+        .stat-hp { color: #ff4444; }
+        .stat-atk { color: #ffaa00; }
+        .stat-def { color: #4488ff; }
+
+        #inventory-box {
+            background: #1a1a2a;
+            border: 2px solid #4a4a6a;
+            padding: 10px;
+            font-size: 8px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        #inventory-box h3 {
+            color: #ffaa00;
+            font-size: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #3a3a5a;
+            padding-bottom: 5px;
+        }
+
+        .inv-item {
+            padding: 5px;
+            background: #0a0a0a;
+            margin: 3px 0;
+            color: #aaa;
+            cursor: pointer;
+        }
+
+        .inv-item:hover {
+            background: #2a2a4a;
+            color: #00ff88;
+        }
+
+        #actions {
+            background: #1a1a2a;
+            border: 2px solid #4a4a6a;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            padding: 10px 15px;
+            background: #2a2a4a;
+            color: #00ff88;
+            border: 2px solid #00ff88;
+            cursor: pointer;
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            background: #00ff88;
+            color: #0a0a0a;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .action-btn.attack { border-color: #ff4444; color: #ff4444; }
+        .action-btn.attack:hover:not(:disabled) { background: #ff4444; color: #fff; }
+        .action-btn.item { border-color: #ffaa00; color: #ffaa00; }
+        .action-btn.item:hover:not(:disabled) { background: #ffaa00; color: #0a0a0a; }
+        .action-btn.flee { border-color: #8888ff; color: #8888ff; }
+        .action-btn.flee:hover:not(:disabled) { background: #8888ff; color: #fff; }
+
+        #combat-log {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #3a3a5a;
+            padding: 10px;
+            font-size: 7px;
+            line-height: 1.8;
+            max-height: 100px;
+            overflow-y: auto;
+            color: #aaa;
+        }
+
+        #combat-log .log-damage { color: #ff4444; }
+        #combat-log .log-heal { color: #44ff44; }
+        #combat-log .log-info { color: #4488ff; }
+        #combat-log .log-victory { color: #ffaa00; }
+
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a1a2a;
+            border: 4px solid #ffaa00;
+            padding: 30px;
+            text-align: center;
+            z-index: 100;
+            display: none;
+            max-width: 400px;
+        }
+
+        #message-box.show { display: block; }
+        #message-box h2 { color: #ffaa00; font-size: 14px; margin-bottom: 15px; }
+        #message-box p { font-size: 9px; line-height: 2; margin-bottom: 20px; color: #aaa; }
+        #message-box .btn { font-size: 10px; }
+
+        #boss-dialogue {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #aa44aa;
+            padding: 15px 25px;
+            font-size: 8px;
+            line-height: 2;
+            color: #cc88cc;
+            max-width: 500px;
+            text-align: center;
+            display: none;
+        }
+
+        #boss-dialogue.show { display: block; }
+        #boss-dialogue .speaker { color: #ff66ff; font-size: 10px; margin-bottom: 5px; }
+
+        #room-navigation {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .nav-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 7px;
+            padding: 8px 12px;
+            background: #2a2a4a;
+            color: #aaa;
+            border: 2px solid #5a5a7a;
+            cursor: pointer;
+        }
+
+        .nav-btn:hover { background: #4a4a6a; color: #fff; }
+        .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        #map-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #4a4a6a;
+            padding: 10px;
+            font-size: 6px;
+            line-height: 1.5;
+        }
+
+        .map-room { padding: 2px 5px; }
+        .map-room.current { color: #ffaa00; background: #2a2a4a; }
+        .map-room.visited { color: #666; }
+
+        #end-screen {
+            background: linear-gradient(180deg, #1a0a1a 0%, #2a1a2a 50%, #1a0a1a 100%);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        #end-screen h1 { font-size: 24px; margin-bottom: 30px; }
+        #end-screen.victory h1 { color: #ffaa00; text-shadow: 4px 4px 0 #4a3a00; }
+        #end-screen.death h1 { color: #ff4444; text-shadow: 4px 4px 0 #4a0000; }
+        #end-screen.escape h1 { color: #8888ff; text-shadow: 4px 4px 0 #2a2a4a; }
+
+        #end-screen p { font-size: 10px; line-height: 2.5; color: #aaa; margin-bottom: 40px; max-width: 500px; }
+
+        .pixel-hero {
+            width: 80px;
+            height: 80px;
+            margin: 20px auto;
+            background: linear-gradient(180deg, #4488ff 0%, #2266cc 100%);
+            border: 4px solid #88ccff;
+            box-shadow: 0 0 20px #4488ff;
+            position: relative;
+        }
+
+        .pixel-hero::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            width: 50px;
+            height: 20px;
+            background: #ffcc88;
+            border-radius: 25px 25px 0 0;
+        }
+
+        .hp-bar {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border: 1px solid #555;
+            margin-top: 5px;
+        }
+
+        .hp-bar-fill {
+            height: 100%;
+            background: #ff4444;
+            transition: width 0.3s;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="game-screen">
+            <div id="title-screen" class="screen active">
+                <h1>DARKSTONE CAVERN</h1>
+                <h2>AN 8-BIT RPG ADVENTURE</h2>
+                <button class="btn" onclick="startGame()">START GAME</button>
+                <button class="btn" onclick="showControls()">CONTROLS</button>
+            </div>
+
+            <div id="story-screen" class="screen">
+                <div id="story-text"></div>
+                <button class="btn" onclick="showGame()">ENTER THE CAVERN</button>
+            </div>
+
+            <div id="game-screen-main" class="screen">
+                <div id="room-info">
+                    <div>
+                        <div id="room-name">Entrance Hall</div>
+                        <div id="room-desc">The dark entrance to the caverns</div>
+                    </div>
+                    <div id="map-display"></div>
+                </div>
+
+                <div id="main-area">
+                    <div id="dungeon-view">
+                        <div id="player-sprite" class="pixel-art"></div>
+                        <div id="enemy-display" class="hidden">
+                            <div id="enemy-sprite" class="pixel-art"></div>
+                            <div id="enemy-stats"></div>
+                        </div>
+                        <div id="combat-log"></div>
+                    </div>
+
+                    <div id="sidebar">
+                        <div id="player-stats">
+                            <h3>HERO</h3>
+                            <div class="stat-row"><span>HP</span><span id="stat-hp" class="stat-hp">100/100</span></div>
+                            <div class="hp-bar"><div id="hp-bar-fill" class="hp-bar-fill" style="width: 100%"></div></div>
+                            <div class="stat-row"><span>ATK</span><span id="stat-atk" class="stat-atk">10</span></div>
+                            <div class="stat-row"><span>DEF</span><span id="stat-def" class="stat-def">5</span></div>
+                        </div>
+                        <div id="inventory-box">
+                            <h3>INVENTORY</h3>
+                            <div id="inventory-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="actions">
+                    <button class="action-btn attack" id="btn-attack" onclick="attack()">ATTACK</button>
+                    <button class="action-btn item" id="btn-item" onclick="useItem()">USE ITEM</button>
+                    <button class="action-btn flee" id="btn-flee" onclick="flee()">FLEE</button>
+                </div>
+
+                <div id="room-navigation"></div>
+                <div id="boss-dialogue"></div>
+                <div id="message-box">
+                    <h2 id="msg-title"></h2>
+                    <p id="msg-text"></p>
+                    <button class="btn" id="msg-btn" onclick="closeMessage()"></button>
+                </div>
+            </div>
+
+            <div id="end-screen" class="screen">
+                <h1 id="end-title"></h1>
+                <div class="pixel-hero"></div>
+                <p id="end-text"></p>
+                <button class="btn" onclick="location.reload()">PLAY AGAIN</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ENEMIES = {
+            slime: { name: 'Cave Slime', hp: 20, atk: 5, def: 2, emoji: '🟢', class: 'enemy-slime' },
+            archer: { name: 'Bone Archer', hp: 35, atk: 8, def: 4, emoji: '🏹', class: 'enemy-archer' },
+            knight: { name: 'Dark Knight', hp: 100, atk: 15, def: 10, emoji: '⚔️', class: 'enemy-knight' }
+        };
+
+        const ROOMS = {
+            entrance: {
+                name: 'Entrance Hall',
+                desc: 'The dark entrance to Darkstone Cavern',
+                connections: { east: 'western_corridor', southeast: 'grand_chamber', south: 'eastern_passage' },
+                hasEnemy: false,
+                visited: false
+            },
+            western_corridor: {
+                name: 'Western Corridor',
+                desc: 'Damp walls drip with moisture. Slime trails mark the floor.',
+                connections: { west: 'entrance', south: 'grand_chamber' },
+                enemyType: 'slime',
+                hasEnemy: true,
+                visited: false
+            },
+            eastern_passage: {
+                name: 'Eastern Passage',
+                desc: 'Ancient bones crunch beneath your feet. Arrows whistle in the dark.',
+                connections: { north: 'entrance', south: 'grand_chamber' },
+                enemyType: 'archer',
+                hasEnemy: true,
+                visited: false
+            },
+            grand_chamber: {
+                name: 'Grand Chamber',
+                desc: 'A vast cavern with glowing crystals. Paths lead in all directions.',
+                connections: { north: 'western_corridor', northeast: 'entrance', east: 'eastern_passage', south: 'boss_lair', west: 'treasure_vault' },
+                hasEnemy: false,
+                visited: false
+            },
+            treasure_vault: {
+                name: 'Treasure Vault',
+                desc: 'Golden light reflects off piles of ancient treasure.',
+                connections: { east: 'grand_chamber' },
+                hasEnemy: false,
+                isTreasure: true,
+                visited: false
+            },
+            boss_lair: {
+                name: 'Boss Lair',
+                desc: 'A cold darkness pervades this throne room. THE DARK KNIGHT AWAKENS!',
+                connections: { north: 'grand_chamber' },
+                enemyType: 'knight',
+                hasEnemy: true,
+                isBoss: true,
+                visited: false
+            }
+        };
+
+        const ITEMS = {
+            health_potion: { name: 'Health Potion', type: 'consumable', effect: 'hp', value: 30, desc: 'Restores 30 HP' },
+            super_potion: { name: 'Super Potion', type: 'consumable', effect: 'hp', value: 60, desc: 'Restores 60 HP' },
+            iron_sword: { name: 'Iron Sword', type: 'weapon', effect: 'atk', value: 3, desc: '+3 Attack' },
+            steel_shield: { name: 'Steel Shield', type: 'armor', effect: 'def', value: 3, desc: '+3 Defense' },
+            power_amulet: { name: 'Power Amulet', type: 'accessory', effect: 'atk', value: 2, desc: '+2 Attack' }
+        };
+
+        const BOSS_DIALOGUE = {
+            intro: [
+                "So... another fool dares enter my domain.",
+                "I am the Dark Knight, guardian of this cavern for a thousand years.",
+                "Your quest ends here, insignificant mortal.",
+                "Unless... you have the courage to face your destiny?"
+            ],
+            during: [
+                "Your strikes are feeble against my dark armor!",
+                "I have crushed stronger warriors than you!",
+                "Yield now, and I may spare your miserable life.",
+                "Foolish child! You know not what you face!"
+            ],
+            victory: [
+                "Impossible... my dark powers... they fade...",
+                "You have... proven yourself... worthy...",
+                "Take the treasure... and go... before... it's too late...",
+                "...the cavern... remembers... all who enter..."
+            ],
+            escape: [
+                "Coward! Flee then, knowing I will always be here!",
+                "This is not over, mortal. We shall meet again.",
+                "Run back to your world. It will not save you next time."
+            ]
+        };
+
+        let gameState = {
+            player: {
+                hp: 100,
+                maxHp: 100,
+                atk: 10,
+                def: 5,
+                inventory: ['health_potion', 'health_potion']
+            },
+            currentRoom: 'entrance',
+            currentEnemy: null,
+            inCombat: false,
+            gameOver: false,
+            roomsCleared: 0,
+            bossDefeated: false,
+            dialogueIndex: 0
+        };
+
+        let storyContent = `You are a brave adventurer who has heard whispers of the legendary Darkstone Cavern.
+
+Deep within these ancient tunnels lies untold treasure guarded by the infamous Dark Knight - a warrior of unholy power who has terrorized the land for centuries.
+
+Many have entered seeking glory and riches. None have returned.
+
+Today, you stand at the entrance, torch in hand, ready to face whatever horrors await within.
+
+The darkness seems to pulse with malevolent energy as you take your first step inside...
+
+Your quest: Explore the cavern, defeat its guardians, and face the Dark Knight!
+
+Will you emerge victorious, or will the cavern claim another soul?`;
+
+        function startGame() {
+            document.getElementById('title-screen').classList.remove('active');
+            document.getElementById('story-screen').classList.add('active');
+            document.getElementById('story-text').textContent = storyContent;
+        }
+
+        function showControls() {
+            alert('CONTROLS:\n\nArrow Keys / WASD - Move between rooms\nSPACE / ENTER - Confirm/Select\nI - Use Inventory Item\nESC - Cancel\n\nTIPS:\n- Explore all rooms before facing the Boss\n- Collect treasure for powerful items\n- Use potions wisely!\n- Defense reduces damage taken');
+        }
+
+        function showGame() {
+            document.getElementById('story-screen').classList.remove('active');
+            document.getElementById('game-screen-main').classList.add('active');
+            ROOMS.entrance.visited = true;
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('room-name').textContent = ROOMS[gameState.currentRoom].name;
+            document.getElementById('room-desc').textContent = ROOMS[gameState.currentRoom].desc;
+            document.getElementById('stat-hp').textContent = `${gameState.player.hp}/${gameState.player.maxHp}`;
+            document.getElementById('stat-atk').textContent = gameState.player.atk;
+            document.getElementById('stat-def').textContent = gameState.player.def;
+            document.getElementById('hp-bar-fill').style.width = `${(gameState.player.hp / gameState.player.maxHp) * 100}%`;
+
+            updateInventory();
+            updateMap();
+            updateNavigation();
+            checkRoomEnemy();
+            updateActions();
+        }
+
+        function updateInventory() {
+            const list = document.getElementById('inventory-list');
+            list.innerHTML = '';
+            if (gameState.player.inventory.length === 0) {
+                list.innerHTML = '<div style="color: #555; font-size: 7px;">Empty</div>';
+            } else {
+                gameState.player.inventory.forEach((itemId, index) => {
+                    const item = ITEMS[itemId];
+                    const div = document.createElement('div');
+                    div.className = 'inv-item';
+                    div.textContent = `${item.name}`;
+                    div.onclick = () => useSpecificItem(index);
+                    list.appendChild(div);
+                });
+            }
+        }
+
+        function updateMap() {
+            const map = document.getElementById('map-display');
+            let html = '<div style="color: #ffaa00; margin-bottom: 5px;">MAP</div>';
+            Object.keys(ROOMS).forEach(roomId => {
+                const room = ROOMS[roomId];
+                let cls = 'map-room';
+                if (roomId === gameState.currentRoom) cls += ' current';
+                else if (room.visited) cls += ' visited';
+                const shortName = room.name.split(' ')[0];
+                html += `<div class="${cls}">${shortName}</div>`;
+            });
+            map.innerHTML = html;
+        }
+
+        function updateNavigation() {
+            const nav = document.getElementById('room-navigation');
+            nav.innerHTML = '';
+            const room = ROOMS[gameState.currentRoom];
+
+            Object.keys(room.connections).forEach(dir => {
+                const targetRoom = room.connections[dir];
+                const btn = document.createElement('button');
+                btn.className = 'nav-btn';
+                btn.textContent = dir.replace('_', ' ').toUpperCase();
+                btn.onclick = () => moveToRoom(targetRoom);
+                nav.appendChild(btn);
+            });
+        }
+
+        function updateActions() {
+            const attackBtn = document.getElementById('btn-attack');
+            const itemBtn = document.getElementById('btn-item');
+            const fleeBtn = document.getElementById('btn-flee');
+
+            if (gameState.inCombat) {
+                attackBtn.disabled = false;
+                itemBtn.disabled = false;
+                fleeBtn.disabled = false;
+                document.querySelectorAll('.nav-btn').forEach(b => b.disabled = true);
+            } else {
+                attackBtn.disabled = true;
+                itemBtn.disabled = gameState.player.inventory.length === 0;
+                fleeBtn.disabled = true;
+                document.querySelectorAll('.nav-btn').forEach(b => b.disabled = false);
+            }
+        }
+
+        function moveToRoom(roomId) {
+            if (gameState.inCombat) return;
+            gameState.currentRoom = roomId;
+            ROOMS[roomId].visited = true;
+            document.getElementById('boss-dialogue').classList.remove('show');
+            document.getElementById('boss-dialogue').classList.remove('show');
+            updateUI();
+        }
+
+        function checkRoomEnemy() {
+            const room = ROOMS[gameState.currentRoom];
+            const enemyDisplay = document.getElementById('enemy-display');
+            const combatLog = document.getElementById('combat-log');
+
+            if (room.hasEnemy && room.enemyType) {
+                if (!gameState.bossDefeated || room.isBoss) {
+                    const enemy = { ...ENEMIES[room.enemyType] };
+                    enemy.hp = enemy.maxHp || enemy.hp;
+                    gameState.currentEnemy = enemy;
+                    enemyDisplay.classList.remove('hidden');
+                    document.getElementById('enemy-sprite').className = `pixel-art ${enemy.class}`;
+                    document.getElementById('enemy-sprite').textContent = enemy.emoji;
+                    document.getElementById('enemy-stats').textContent = `${enemy.name}: ${enemy.hp} HP`;
+
+                    if (room.isBoss) {
+                        gameState.inCombat = true;
+                        showBossDialogue('intro');
+                    } else {
+                        gameState.inCombat = true;
+                        combatLog.innerHTML = '<span class="log-info">A wild <span class="log-damage">' + enemy.name + '</span> appeared!</span>';
+                    }
+                    updateActions();
+                }
+            } else {
+                enemyDisplay.classList.add('hidden');
+                gameState.currentEnemy = null;
+                gameState.inCombat = false;
+                combatLog.innerHTML = '';
+            }
+        }
+
+        function showBossDialogue(type) {
+            const dialogue = BOSS_DIALOGUE[type];
+            const box = document.getElementById('boss-dialogue');
+            if (dialogue && dialogue.length > 0) {
+                box.innerHTML = `<div class="speaker">DARK KNIGHT:</div>${dialogue[gameState.dialogueIndex] || dialogue[0]}`;
+                box.classList.add('show');
+                gameState.dialogueIndex++;
+                if (gameState.dialogueIndex >= dialogue.length) {
+                    gameState.dialogueIndex = 0;
+                }
+            }
+        }
+
+        function attack() {
+            if (!gameState.inCombat || !gameState.currentEnemy) return;
+
+            const log = document.getElementById('combat-log');
+            const playerAtk = gameState.player.atk;
+            const enemyDef = gameState.currentEnemy.def;
+            const playerDmg = Math.max(1, playerAtk - enemyDef + Math.floor(Math.random() * 5) - 2);
+
+            gameState.currentEnemy.hp -= playerDmg;
+            log.innerHTML += `<span class="log-info">You attack for <span class="log-damage">${playerDmg}</span> damage!</span><br>`;
+
+            if (gameState.currentEnemy.hp <= 0) {
+                handleVictory();
+            } else {
+                enemyAttack();
+            }
+            document.getElementById('enemy-stats').textContent =
+                `${gameState.currentEnemy.name}: ${gameState.currentEnemy.hp} HP`;
+        }
+
+        function enemyAttack() {
+            const log = document.getElementById('combat-log');
+            const enemyAtk = gameState.currentEnemy.atk;
+            const playerDef = gameState.player.def;
+            const enemyDmg = Math.max(1, enemyAtk - playerDef + Math.floor(Math.random() * 3) - 1);
+
+            gameState.player.hp -= enemyDmg;
+            log.innerHTML += `<span class="log-info">${gameState.currentEnemy.name} strikes for <span class="log-damage">${enemyDmg}</span> damage!</span><br>`;
+
+            if (gameState.player.hp <= 0) {
+                handleDeath();
+            } else if (gameState.currentEnemy.name === 'Dark Knight' && Math.random() < 0.4) {
+                showBossDialogue('during');
+            }
+
+            document.getElementById('stat-hp').textContent = `${gameState.player.hp}/${gameState.player.maxHp}`;
+            document.getElementById('hp-bar-fill').style.width = `${(gameState.player.hp / gameState.player.maxHp) * 100}%`;
+        }
+
+        function handleVictory() {
+            const log = document.getElementById('combat-log');
+            const room = ROOMS[gameState.currentRoom];
+
+            if (room.isBoss) {
+                showBossDialogue('victory');
+                gameState.bossDefeated = true;
+                gameState.inCombat = false;
+                ROOMS[gameState.currentRoom].hasEnemy = false;
+
+                setTimeout(() => {
+                    showEnding('victory');
+                }, 3000);
+            } else {
+                log.innerHTML += `<span class="log-victory">Victory! ${gameState.currentEnemy.name} defeated!</span><br>`;
+                gameState.roomsCleared++;
+                gameState.inCombat = false;
+                gameState.currentEnemy = null;
+                ROOMS[gameState.currentRoom].hasEnemy = false;
+                document.getElementById('enemy-display').classList.add('hidden');
+
+                if (room.isTreasure) {
+                    giveTreasure();
+                }
+
+                updateActions();
+            }
+        }
+
+        function giveTreasure() {
+            const treasures = ['super_potion', 'iron_sword', 'steel_shield', 'power_amulet', 'health_potion'];
+            const found = treasures[Math.floor(Math.random() * treasures.length)];
+            gameState.player.inventory.push(found);
+            const log = document.getElementById('combat-log');
+            log.innerHTML += `<span class="log-heal">Found: ${ITEMS[found].name}!</span><br>`;
+        }
+
+        function handleDeath() {
+            showEnding('death');
+        }
+
+        function flee() {
+            if (!gameState.inCombat) return;
+
+            const room = ROOMS[gameState.currentRoom];
+            if (room.isBoss) {
+                showBossDialogue('escape');
+                setTimeout(() => {
+                    showEnding('escape');
+                }, 2000);
+            } else {
+                const directions = Object.keys(room.connections);
+                if (directions.length > 0) {
+                    const dir = directions[Math.floor(Math.random() * directions.length)];
+                    gameState.inCombat = false;
+                    gameState.currentEnemy = null;
+                    document.getElementById('enemy-display').classList.add('hidden');
+                    document.getElementById('combat-log').innerHTML = '<span class="log-info">Fled from battle!</span><br>';
+                    moveToRoom(room.connections[dir]);
+                }
+            }
+        }
+
+        function useItem() {
+            if (gameState.player.inventory.length === 0) return;
+            useSpecificItem(0);
+        }
+
+        function useSpecificItem(index) {
+            if (index < 0 || index >= gameState.player.inventory.length) return;
+
+            const itemId = gameState.player.inventory[index];
+            const item = ITEMS[itemId];
+            const log = document.getElementById('combat-log');
+
+            if (item.effect === 'hp') {
+                const healAmount = Math.min(item.value, gameState.player.maxHp - gameState.player.hp);
+                gameState.player.hp += healAmount;
+                log.innerHTML += `<span class="log-heal">Used ${item.name}! Restored ${healAmount} HP!</span><br>`;
+                document.getElementById('stat-hp').textContent = `${gameState.player.hp}/${gameState.player.maxHp}`;
+                document.getElementById('hp-bar-fill').style.width = `${(gameState.player.hp / gameState.player.maxHp) * 100}%`;
+            } else if (item.effect === 'atk') {
+                gameState.player.atk += item.value;
+                log.innerHTML += `<span class="log-info">Equipped ${item.name}! ATK +${item.value}!</span><br>`;
+                document.getElementById('stat-atk').textContent = gameState.player.atk;
+            } else if (item.effect === 'def') {
+                gameState.player.def += item.value;
+                log.innerHTML += `<span class="log-info">Equipped ${item.name}! DEF +${item.value}!</span><br>`;
+                document.getElementById('stat-def').textContent = gameState.player.def;
+            }
+
+            gameState.player.inventory.splice(index, 1);
+            updateInventory();
+            updateActions();
+        }
+
+        function showEnding(type) {
+            document.getElementById('game-screen-main').classList.remove('active');
+            const endScreen = document.getElementById('end-screen');
+            endScreen.classList.add('active');
+            endScreen.className = 'screen ' + type;
+
+            const titles = {
+                victory: 'VICTORY!',
+                death: 'YOU HAVE DIED',
+                escape: 'ESCAPED'
+            };
+
+            const texts = {
+                victory: `With a mighty final blow, the Dark Knight falls!
+
+His dark armor crumbles to dust as centuries of evil power dissipate into the cavern air.
+
+You stand victorious, the hero of Darkstone Cavern!
+
+Treasures beyond imagination are yours. The kingdom celebrates your return.
+
+Congratulations, brave adventurer. You have saved us all!
+
+Enemies Defeated: ${gameState.roomsCleared}
+Final HP: ${gameState.player.hp}/${gameState.player.maxHp}`,
+
+                death: `Your vision fades as the light leaves your eyes...
+
+The cold darkness of the cavern claims another soul.
+
+Your bones will join the countless others who dared to challenge the Dark Knight.
+
+Perhaps another hero will succeed where you have fallen...
+
+GAME OVER`,
+
+                escape: `You flee from the Boss Lair, your cowardice saving your life...
+
+The Dark Knight's mocking laughter echoes through the tunnels.
+
+You escaped with your life, but the cavern's treasures remain guarded.
+
+Will you ever find the courage to return?
+
+Perhaps wisdom is knowing when to fight and when to flee...`
+            };
+
+            document.getElementById('end-title').textContent = titles[type];
+            document.getElementById('end-text').textContent = texts[type];
+        }
+
+        function closeMessage() {
+            document.getElementById('message-box').classList.remove('show');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (gameState.gameOver) return;
+
+            const key = e.key.toLowerCase();
+
+            if (key === 'arrowup' || key === 'w') {
+                const room = ROOMS[gameState.currentRoom];
+                if (room.connections.north && !gameState.inCombat) {
+                    moveToRoom(room.connections.north);
+                }
+            } else if (key === 'arrowdown' || key === 's') {
+                const room = ROOMS[gameState.currentRoom];
+                if (room.connections.south && !gameState.inCombat) {
+                    moveToRoom(room.connections.south);
+                }
+            } else if (key === 'arrowleft' || key === 'a') {
+                const room = ROOMS[gameState.currentRoom];
+                if (room.connections.west && !gameState.inCombat) {
+                    moveToRoom(room.connections.west);
+                }
+            } else if (key === 'arrowright' || key === 'd') {
+                const room = ROOMS[gameState.currentRoom];
+                if (room.connections.east && !gameState.inCombat) {
+                    moveToRoom(room.connections.east);
+                } else if (room.connections.northeast && !gameState.inCombat) {
+                    moveToRoom(room.connections.northeast);
+                } else if (room.connections.southeast && !gameState.inCombat) {
+                    moveToRoom(room.connections.southeast);
+                }
+            } else if (key === ' ' || key === 'enter') {
+                if (gameState.inCombat) {
+                    attack();
+                }
+            } else if (key === 'i') {
+                useItem();
+            } else if (key === 'escape') {
+                closeMessage();
+            }
+        });
+    </script>
+</body>
+</html>
