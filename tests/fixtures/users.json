@@ -1,0 +1,40 @@
+{
+  "validUser": {
+    "id": 1,
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "password123",
+    "role": "player"
+  },
+  "adminUser": {
+    "id": 2,
+    "username": "admin",
+    "email": "admin@example.com",
+    "password": "admin123",
+    "role": "admin"
+  },
+  "invalidUser": {
+    "username": "invalid",
+    "password": "wrongpassword"
+  },
+  "users": [
+    {
+      "id": 1,
+      "username": "testuser",
+      "email": "test@example.com",
+      "role": "player"
+    },
+    {
+      "id": 2,
+      "username": "admin",
+      "email": "admin@example.com",
+      "role": "admin"
+    },
+    {
+      "id": 3,
+      "username": "guest",
+      "email": "guest@example.com",
+      "role": "guest"
+    }
+  ]
+}

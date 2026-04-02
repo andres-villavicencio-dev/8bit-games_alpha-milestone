@@ -20,6 +20,15 @@ Defeat the Dark Knight and reach the exit.
 - [x] Dialogue (branching, portraits, narrator)
 - [x] Game state (overworld ↔ battle ↔ dialogue transitions)
 
+## QA Requirements
+- [x] Unit tests for core game logic functions (movement, battle calculations)
+- [x] Integration tests for game state transitions
+- [x] E2E tests for complete player journey through the dungeon
+- [x] Performance tests to ensure smooth gameplay at target FPS
+- [x] Compatibility tests across supported platforms/browsers
+- [x] Accessibility checks for basic keyboard navigation
+- [x] Security review of save/load functionality
+
 ## Out of Scope (Phase 2)
 - Save system
 - Inventory / equipment
