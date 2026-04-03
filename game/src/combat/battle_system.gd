@@ -30,13 +30,21 @@ func player_action(action: String) -> void:
 			damage_dealt.emit("enemy", dmg, enemy.hp)
 			status_message.emit("%s attacks for %d damage!" % [player.name, dmg])
 		"heal":
-			var heal = min(20, player.max_hp - player.hp)
-			player.hp += heal
+			var heal = randi_range(15, 25)
+			player.hp = mini(player.hp + heal, player.max_hp)
 			status_message.emit("%s heals %d HP!" % [player.name, heal])
 		"flee":
-			status_message.emit("Got away safely!")
-			_end_battle("fled")
-			return
+			if randf() < 0.70:
+				status_message.emit("Got away safely!")
+				_end_battle("fled")
+				return
+			else:
+				status_message.emit("Couldn't escape!")
+				state = BattleState.ENEMY_TURN
+				turn_started.emit(false)
+				await get_tree().create_timer(1.0).timeout
+				_enemy_turn()
+				return
 
 	if enemy.hp <= 0:
 		_end_battle("victory")
@@ -59,7 +67,7 @@ func _enemy_turn() -> void:
 		turn_started.emit(true)
 
 func _calc_damage(attack: int, defense: int) -> int:
-	return max(1, attack - defense + randi_range(-2, 2))
+	return maxi(1, attack - defense)
 
 func _end_battle(result: String) -> void:
 	state = BattleState.INACTIVE
