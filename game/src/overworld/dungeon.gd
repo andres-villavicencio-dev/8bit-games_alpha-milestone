@@ -1,12 +1,60 @@
-# Dungeon: The Darkstone Cavern (alpha demo — 1 dungeon)
-class_name DungeonData
-extends Resource
+class_name Dungeon
+extends Node2D
 
 const DUNGEON_ID = "darkstone_cavern"
 const DUNGEON_NAME = "Darkstone Cavern"
 
-# Room layout (0=floor, 1=wall, E=enemy spawn, B=boss, X=exit, S=start)
-static func get_rooms() -> Array[Dictionary]:
+const ROOM_WIDTH = 320
+const ROOM_HEIGHT = 240
+const DOOR_WIDTH = 48
+const DOOR_HEIGHT = 16
+
+const DOOR_POSITIONS: Dictionary = {
+	"north": Vector2(160, 0),
+	"south": Vector2(160, 224),
+	"east": Vector2(304, 112),
+	"west": Vector2(16, 112)
+}
+
+enum RoomType { FLOOR, WALL, ENEMY, BOSS, EXIT, START }
+
+var _rooms: Array[Dictionary]
+var _room_map: Dictionary = {}
+var _current_room_id: String = "entrance"
+var _player_start_pos: Vector2 = Vector2(160, 180)
+var _is_transitioning: bool = false
+var _player: CharacterBody2D
+
+signal room_changed(room_id: String)
+signal room_transition_started(from_room: String, to_room: String, direction: String)
+signal room_transition_completed(to_room: String)
+
+func _ready() -> void:
+	_rooms = _get_rooms_data()
+	for room in _rooms:
+		_room_map[room["id"]] = room
+	room_transition_completed.connect(_on_room_transition_completed)
+	_spawn_player()
+	queue_redraw()
+
+func _spawn_player() -> void:
+	var player_scene = preload("res://src/overworld/player.tscn")
+	_player = player_scene.instantiate()
+	_player.position = _player_start_pos
+	_player.set_process_input(true)
+	add_child(_player)
+
+func _on_room_transition_completed(to_room: String) -> void:
+	_is_transitioning = false
+	_player.set_process_input(true)
+
+func get_player() -> CharacterBody2D:
+	return _player
+
+func get_current_room_id() -> String:
+	return _current_room_id
+
+func _get_rooms_data() -> Array[Dictionary]:
 	return [
 		{
 			"id": "entrance",
@@ -54,3 +102,157 @@ static func get_rooms() -> Array[Dictionary]:
 			"is_exit": true
 		}
 	]
+
+func get_current_room() -> Dictionary:
+	return _room_map.get(_current_room_id, {})
+
+func get_room_by_id(room_id: String) -> Dictionary:
+	return _room_map.get(room_id, {})
+
+func get_available_directions() -> Array[String]:
+	var room = get_current_room()
+	if room.is_empty():
+		return []
+	return room.get("connections", {}).keys()
+
+func is_at_door(direction: String) -> bool:
+	if not _player:
+		return false
+	var door_pos = DOOR_POSITIONS.get(direction)
+	if not door_pos:
+		return false
+	var dist = (_player.position - door_pos).length()
+	return dist < 20.0
+
+func try_move(direction: String) -> bool:
+	var room = get_current_room()
+	var connections = room.get("connections", {})
+	
+	if not connections.has(direction):
+		return false
+	
+	var from_room = _current_room_id
+	var to_room = connections[direction]
+	
+	_is_transitioning = true
+	_player.set_process_input(false)
+	room_transition_started.emit(from_room, to_room, direction)
+	_current_room_id = to_room
+	room_changed.emit(_current_room_id)
+	queue_redraw()
+	
+	await get_tree().create_timer(0.3).timeout
+	_player.position = DOOR_POSITIONS[direction]
+	room_transition_completed.emit(_current_room_id)
+	return true
+
+func _draw() -> void:
+	var room = get_current_room()
+	if room.is_empty():
+		return
+	
+	var room_rect = Rect2(0, 0, ROOM_WIDTH, ROOM_HEIGHT)
+	var bg_color = _get_room_color(room)
+	draw_rect(room_rect, bg_color, true)
+	
+	var border_color = Color(0.2, 0.15, 0.1, 1.0)
+	draw_rect(room_rect, border_color, false, 4.0)
+	
+	_draw_doors(room)
+	_draw_room_details(room)
+
+func _get_room_color(room: Dictionary) -> Color:
+	if room.get("is_boss", false):
+		return Color(0.15, 0.05, 0.1, 1.0)
+	elif room.get("is_exit", false):
+		return Color(0.1, 0.15, 0.1, 1.0)
+	elif room.get("is_start", false):
+		return Color(0.1, 0.1, 0.12, 1.0)
+	elif room.get("enemy_spawn") != null:
+		return Color(0.12, 0.1, 0.08, 1.0)
+	else:
+		return Color(0.1, 0.1, 0.1, 1.0)
+
+func _draw_doors(room: Dictionary) -> void:
+	var connections = room.get("connections", {})
+	var door_color = Color(0.4, 0.35, 0.3, 1.0)
+	
+	if connections.has("north"):
+		var door_rect = Rect2(
+			ROOM_WIDTH / 2 - DOOR_WIDTH / 2,
+			0,
+			DOOR_WIDTH,
+			DOOR_HEIGHT
+		)
+		draw_rect(door_rect, door_color, true)
+	
+	if connections.has("south"):
+		var door_rect = Rect2(
+			ROOM_WIDTH / 2 - DOOR_WIDTH / 2,
+			ROOM_HEIGHT - DOOR_HEIGHT,
+			DOOR_WIDTH,
+			DOOR_HEIGHT
+		)
+		draw_rect(door_rect, door_color, true)
+	
+	if connections.has("east"):
+		var door_rect = Rect2(
+			ROOM_WIDTH - DOOR_HEIGHT,
+			ROOM_HEIGHT / 2 - DOOR_WIDTH / 2,
+			DOOR_HEIGHT,
+			DOOR_WIDTH
+		)
+		draw_rect(door_rect, door_color, true)
+	
+	if connections.has("west"):
+		var door_rect = Rect2(
+			0,
+			ROOM_HEIGHT / 2 - DOOR_WIDTH / 2,
+			DOOR_HEIGHT,
+			DOOR_WIDTH
+		)
+		draw_rect(door_rect, door_color, true)
+
+func _draw_room_details(room: Dictionary) -> void:
+	var detail_color = Color(0.3, 0.25, 0.2, 0.5)
+	
+	if room.get("is_boss", false):
+		var throne_rect = Rect2(
+			ROOM_WIDTH / 2 - 24,
+			ROOM_HEIGHT / 2 - 32,
+			48,
+			48
+		)
+		draw_rect(throne_rect, Color(0.5, 0.0, 0.0, 0.8), true)
+		draw_rect(throne_rect, Color(0.3, 0.0, 0.0, 1.0), false, 2.0)
+	elif room.get("enemy_spawn") != null:
+		var enemy_marker = Rect2(
+			ROOM_WIDTH / 2 - 8,
+			ROOM_HEIGHT / 2 - 8,
+			16,
+			16
+		)
+		var enemy_color = Color(0.0, 0.5, 0.0, 0.6) if room.get("enemy_spawn") == "slime" else Color(0.8, 0.8, 0.8, 0.6)
+		draw_rect(enemy_marker, enemy_color, true)
+	elif room.get("is_exit", false):
+		var exit_marker = Rect2(
+			ROOM_WIDTH / 2 - 16,
+			ROOM_HEIGHT / 2 - 24,
+			32,
+			48
+		)
+		draw_rect(exit_marker, Color(1.0, 1.0, 0.8, 0.4), true)
+	
+	for i in range(3):
+		var stalactite_x = 50 + i * 100
+		var stalactite_height = 15 + (i % 3) * 5
+		var stalactite_rect = Rect2(
+			stalactite_x,
+			0,
+			8,
+			stalactite_height
+		)
+		draw_rect(stalactite_rect, detail_color, true)
+
+func is_transitioning() -> bool:
+	return _is_transitioning

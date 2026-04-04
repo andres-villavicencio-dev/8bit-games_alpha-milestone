@@ -6,11 +6,15 @@ enum Direction { DOWN, UP, LEFT, RIGHT }
 
 var facing: Direction = Direction.DOWN
 var is_moving: bool = false
+var dungeon: Node2D
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var interaction_area: Area2D = $InteractionArea
 
 signal interacted(target: Node)
+
+func _ready() -> void:
+	dungeon = get_parent()
 
 func _physics_process(_delta: float) -> void:
 	var direction = Vector2.ZERO
@@ -22,6 +26,7 @@ func _physics_process(_delta: float) -> void:
 		velocity = direction * SPEED
 		is_moving = true
 		_update_facing(direction)
+		_check_door_transition(direction)
 	else:
 		velocity = Vector2.ZERO
 		is_moving = false
@@ -31,6 +36,23 @@ func _physics_process(_delta: float) -> void:
 
 	if Input.is_action_just_pressed("ui_accept"):
 		_try_interact()
+
+func _check_door_transition(dir: Vector2) -> void:
+	if not dungeon or not dungeon.has_method("is_at_door"):
+		return
+	
+	var door_dir = ""
+	if dir.y < 0:
+		door_dir = "north"
+	elif dir.y > 0:
+		door_dir = "south"
+	elif dir.x > 0:
+		door_dir = "east"
+	elif dir.x < 0:
+		door_dir = "west"
+	
+	if door_dir and dungeon.is_at_door(door_dir):
+		dungeon.try_move(door_dir)
 
 func _update_facing(dir: Vector2) -> void:
 	if abs(dir.x) > abs(dir.y):
