@@ -33,6 +33,7 @@ var enemy_data: Dictionary = {
 }
 
 func _ready() -> void:
+	_load_battle_data()
 	battle_system.battle_started.connect(_on_battle_started)
 	battle_system.damage_dealt.connect(_on_damage_dealt)
 	battle_system.status_message.connect(_on_status_message)
@@ -45,6 +46,12 @@ func _ready() -> void:
 
 	battle_system.start_battle(player_data, enemy_data)
 	_on_turn_started(true)
+
+func _load_battle_data() -> void:
+	var game_manager = get_node("/root/GameManager")
+	if game_manager.pending_enemy.size() > 0:
+		enemy_data = game_manager.pending_enemy.duplicate()
+		game_manager.pending_enemy = {}
 
 func _on_battle_started(p_data: Dictionary, e_data: Dictionary) -> void:
 	player_data = p_data

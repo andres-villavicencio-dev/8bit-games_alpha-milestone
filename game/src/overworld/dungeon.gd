@@ -28,6 +28,7 @@ var _player: CharacterBody2D
 signal room_changed(room_id: String)
 signal room_transition_started(from_room: String, to_room: String, direction: String)
 signal room_transition_completed(to_room: String)
+signal battle_triggered(enemy_data: Dictionary)
 
 func _ready() -> void:
 	_rooms = _get_rooms_data()
@@ -47,6 +48,51 @@ func _spawn_player() -> void:
 func _on_room_transition_completed(to_room: String) -> void:
 	_is_transitioning = false
 	_player.set_process_input(true)
+	
+	var room = get_current_room()
+	if room.get("enemy_spawn") != null:
+		await get_tree().create_timer(0.5).timeout
+		_trigger_battle(room)
+
+func _trigger_battle(room: Dictionary) -> void:
+	var enemy_type = room.get("enemy_spawn", "slime")
+	var enemy_data = _get_enemy_data(enemy_type)
+	battle_triggered.emit(enemy_data)
+
+func _get_enemy_data(enemy_type: String) -> Dictionary:
+	match enemy_type:
+		"slime":
+			return {
+				"name": "Cave Slime",
+				"hp": 30,
+				"max_hp": 30,
+				"attack": 8,
+				"defense": 2
+			}
+		"skeleton":
+			return {
+				"name": "Skeleton Warrior",
+				"hp": 45,
+				"max_hp": 45,
+				"attack": 12,
+				"defense": 4
+			}
+		"dark_knight":
+			return {
+				"name": "Dark Knight",
+				"hp": 80,
+				"max_hp": 80,
+				"attack": 18,
+				"defense": 8
+			}
+		_:
+			return {
+				"name": "Wild Monster",
+				"hp": 25,
+				"max_hp": 25,
+				"attack": 10,
+				"defense": 3
+			}
 
 func get_player() -> CharacterBody2D:
 	return _player
