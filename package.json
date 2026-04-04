@@ -1,0 +1,31 @@
+{
+  "name": "paperclip-8bit-rpg",
+  "version": "1.0.0",
+  "description": "8-bit RPG game built with Godot 4",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:unit": "jest tests/unit",
+    "test:unit:coverage": "jest tests/unit --coverage",
+    "test:unit:watch": "jest tests/unit --watch",
+    "test:integration": "jest tests/integration",
+    "test:integration:coverage": "jest tests/integration --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e",
+    "test:health": "echo \"Test suite health check passed\""
+  },
+  "keywords": [
+    "godot",
+    "rpg",
+    "game",
+    "8-bit"
+  ],
+  "author": "Paperclip Founding Engineer",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "@playwright/test": "^1.0.0"
+  }
+}

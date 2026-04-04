@@ -1,0 +1,106 @@
+[gd_scene load_steps=3 format=3 uid="uid://battle_scene"]
+
+[ext_resource type="Script" path="res://src/ui/battle.gd" id="1"]
+[ext_resource type="Script" path="res://src/combat/battle_system.gd" id="2"]
+
+[node name="Battle" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="BattleSystem" type="Node" parent="."]
+script = ExtResource("2")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -160.0
+offset_top = -120.0
+offset_right = 160.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EnemyPanel" type="PanelContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="EnemyInfo" type="VBoxContainer" parent="VBoxContainer/EnemyPanel"]
+layout_mode = 2
+
+[node name="EnemyName" type="Label" parent="VBoxContainer/EnemyPanel/EnemyInfo"]
+layout_mode = 2
+text = "Cave Slime"
+horizontal_alignment = 1
+
+[node name="EnemyHP" type="Label" parent="VBoxContainer/EnemyPanel/EnemyInfo"]
+layout_mode = 2
+text = "HP: 30/30"
+horizontal_alignment = 1
+
+[node name="EnemyHPBar" type="ProgressBar" parent="VBoxContainer/EnemyPanel/EnemyInfo"]
+layout_mode = 2
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="PlayerPanel" type="PanelContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="PlayerInfo" type="VBoxContainer" parent="VBoxContainer/PlayerPanel"]
+layout_mode = 2
+
+[node name="PlayerName" type="Label" parent="VBoxContainer/PlayerPanel/PlayerInfo"]
+layout_mode = 2
+text = "Hero"
+horizontal_alignment = 1
+
+[node name="PlayerHP" type="Label" parent="VBoxContainer/PlayerPanel/PlayerInfo"]
+layout_mode = 2
+text = "HP: 100/100"
+horizontal_alignment = 1
+
+[node name="PlayerHPBar" type="ProgressBar" parent="VBoxContainer/PlayerPanel/PlayerInfo"]
+layout_mode = 2
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="PlayerStats" type="Label" parent="VBoxContainer/PlayerPanel/PlayerInfo"]
+layout_mode = 2
+text = "ATK: 15  DEF: 5"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Battle Start!"
+horizontal_alignment = 1
+
+[node name="BattleLog" type="RichTextLabel" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+text = ""
+scroll_following = true
+
+[node name="ActionPanel" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="AttackButton" type="Button" parent="VBoxContainer/ActionPanel"]
+layout_mode = 2
+text = "Attack"
+
+[node name="HealButton" type="Button" parent="VBoxContainer/ActionPanel"]
+layout_mode = 2
+text = "Heal"
+
+[node name="FleeButton" type="Button" parent="VBoxContainer/ActionPanel"]
+layout_mode = 2
+text = "Flee"
