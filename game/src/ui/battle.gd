@@ -84,11 +84,11 @@ func _on_battle_ended(result: String) -> void:
 		"victory":
 			status_label.text = "Victory!"
 			_add_battle_log("Victory! %s defeated %s!" % [player_data.name, enemy_data.name])
+			var room_id = enemy_data.get("room_id", "")
+			if room_id != "":
+				game_manager.mark_room_cleared(room_id)
 			if is_boss:
-				game_manager.boss_defeated = true
-				var dungeon = get_tree().get_first_node_in_group("dungeon") as Node
-				if dungeon and dungeon.has_method("mark_boss_defeated"):
-					dungeon.mark_boss_defeated()
+				game_manager.mark_boss_defeated_global()
 			attack_button.disabled = true
 			heal_button.disabled = true
 			flee_button.disabled = true

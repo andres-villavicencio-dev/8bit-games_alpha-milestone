@@ -25,19 +25,31 @@ var _player_start_pos: Vector2 = Vector2(160, 180)
 var _is_transitioning: bool = false
 var _player: CharacterBody2D
 var _boss_defeated_rooms: Array = []
+var _cleared_rooms: Dictionary = {}
 
 signal room_changed(room_id: String)
 signal room_transition_started(from_room: String, to_room: String, direction: String)
 signal room_transition_completed(to_room: String)
 signal battle_triggered(enemy_data: Dictionary)
+signal room_cleared(room_id: String)
 
 func _ready() -> void:
 	_rooms = _get_rooms_data()
 	for room in _rooms:
 		_room_map[room["id"]] = room
 	room_transition_completed.connect(_on_room_transition_completed)
+	_sync_cleared_state()
 	_spawn_player()
 	queue_redraw()
+
+func _sync_cleared_state() -> void:
+	var game_manager = get_node("/root/GameManager")
+	for room_id in game_manager.cleared_rooms:
+		if not _boss_defeated_rooms.has(room_id):
+			var room = _room_map.get(room_id, {})
+			if room.get("is_boss", false):
+				_boss_defeated_rooms.append(room_id)
+	_cleared_rooms = game_manager.cleared_rooms.duplicate()
 
 func _spawn_player() -> void:
 	var player_scene = preload("res://src/overworld/player.tscn")
@@ -51,10 +63,8 @@ func _on_room_transition_completed(to_room: String) -> void:
 	_player.set_process_input(true)
 	
 	var room = get_current_room()
-	if room.get("enemy_spawn") != null:
-		var game_manager = get_node("/root/GameManager")
-		if room.get("is_boss", false) and game_manager.boss_defeated:
-			return
+	var game_manager = get_node("/root/GameManager")
+	if room.get("enemy_spawn") != null and not game_manager.is_room_cleared(to_room):
 		await get_tree().create_timer(0.5).timeout
 		_trigger_battle(room)
 
@@ -62,6 +72,7 @@ func _trigger_battle(room: Dictionary) -> void:
 	var enemy_type = room.get("enemy_spawn", "slime")
 	var is_boss = room.get("is_boss", false)
 	var enemy_data = _get_enemy_data(enemy_type, is_boss)
+	enemy_data["room_id"] = _current_room_id
 	battle_triggered.emit(enemy_data)
 
 func _get_enemy_data(enemy_type: String, is_boss: bool = false) -> Dictionary:
@@ -273,6 +284,8 @@ func _draw_doors(room: Dictionary) -> void:
 func _draw_room_details(room: Dictionary) -> void:
 	var detail_color = Color(0.3, 0.25, 0.2, 0.5)
 	var room_id = room.get("id", "")
+	var game_manager = get_node("/root/GameManager")
+	var is_cleared = game_manager.is_room_cleared(room_id)
 	
 	if _boss_defeated_rooms.has(room_id):
 		var throne_rect = Rect2(
@@ -292,6 +305,14 @@ func _draw_room_details(room: Dictionary) -> void:
 		)
 		draw_rect(throne_rect, Color(0.5, 0.0, 0.0, 0.8), true)
 		draw_rect(throne_rect, Color(0.3, 0.0, 0.0, 1.0), false, 2.0)
+	elif room.get("enemy_spawn") != null and is_cleared:
+		var cleared_marker = Rect2(
+			ROOM_WIDTH / 2 - 8,
+			ROOM_HEIGHT / 2 - 8,
+			16,
+			16
+		)
+		draw_rect(cleared_marker, Color(0.0, 0.3, 0.0, 0.4), true)
 	elif room.get("enemy_spawn") != null:
 		var enemy_marker = Rect2(
 			ROOM_WIDTH / 2 - 8,
@@ -328,4 +349,13 @@ func mark_boss_defeated() -> void:
 	var room = get_current_room()
 	if room.get("is_boss", false) and not _boss_defeated_rooms.has(_current_room_id):
 		_boss_defeated_rooms.append(_current_room_id)
+		var game_manager = get_node("/root/GameManager")
+		game_manager.mark_boss_defeated_global()
+		mark_room_cleared(_current_room_id)
 		queue_redraw()
+
+func mark_room_cleared(room_id: String) -> void:
+	var game_manager = get_node("/root/GameManager")
+	game_manager.mark_room_cleared(room_id)
+	_cleared_rooms[room_id] = true
+	queue_redraw()
