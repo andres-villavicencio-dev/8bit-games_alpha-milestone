@@ -4,6 +4,7 @@ enum GameState { OVERWORLD, BATTLE, DIALOGUE, MENU }
 
 var current_state: GameState = GameState.OVERWORLD
 var pending_enemy: Dictionary = {}
+var boss_defeated: bool = false
 
 @onready var battle_system: Node = $BattleSystem
 @onready var dialogue_manager: Node = $DialogueManager

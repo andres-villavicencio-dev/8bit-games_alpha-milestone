@@ -77,10 +77,18 @@ func _on_turn_started(is_player_turn: bool) -> void:
 	flee_button.disabled = not interactive
 
 func _on_battle_ended(result: String) -> void:
+	var game_manager = get_node("/root/GameManager")
+	var is_boss = enemy_data.get("is_boss", false)
+	
 	match result:
 		"victory":
 			status_label.text = "Victory!"
 			_add_battle_log("Victory! %s defeated %s!" % [player_data.name, enemy_data.name])
+			if is_boss:
+				game_manager.boss_defeated = true
+				var dungeon = get_tree().get_first_node_in_group("dungeon") as Node
+				if dungeon and dungeon.has_method("mark_boss_defeated"):
+					dungeon.mark_boss_defeated()
 			attack_button.disabled = true
 			heal_button.disabled = true
 			flee_button.disabled = true
