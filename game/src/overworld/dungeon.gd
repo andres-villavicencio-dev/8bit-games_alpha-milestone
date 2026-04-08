@@ -24,6 +24,7 @@ var _current_room_id: String = "entrance"
 var _player_start_pos: Vector2 = Vector2(160, 180)
 var _is_transitioning: bool = false
 var _player: CharacterBody2D
+var _boss_defeated_rooms: Array = []
 
 signal room_changed(room_id: String)
 signal room_transition_started(from_room: String, to_room: String, direction: String)
@@ -216,7 +217,9 @@ func _draw() -> void:
 	_draw_room_details(room)
 
 func _get_room_color(room: Dictionary) -> Color:
-	if room.get("is_boss", false):
+	if _boss_defeated_rooms.has(room.get("id", "")):
+		return Color(0.1, 0.12, 0.1, 1.0)
+	elif room.get("is_boss", false):
 		return Color(0.15, 0.05, 0.1, 1.0)
 	elif room.get("is_exit", false):
 		return Color(0.1, 0.15, 0.1, 1.0)
@@ -269,8 +272,18 @@ func _draw_doors(room: Dictionary) -> void:
 
 func _draw_room_details(room: Dictionary) -> void:
 	var detail_color = Color(0.3, 0.25, 0.2, 0.5)
+	var room_id = room.get("id", "")
 	
-	if room.get("is_boss", false):
+	if _boss_defeated_rooms.has(room_id):
+		var throne_rect = Rect2(
+			ROOM_WIDTH / 2 - 24,
+			ROOM_HEIGHT / 2 - 32,
+			48,
+			48
+		)
+		draw_rect(throne_rect, Color(0.2, 0.2, 0.2, 0.8), true)
+		draw_rect(throne_rect, Color(0.1, 0.1, 0.1, 1.0), false, 2.0)
+	elif room.get("is_boss", false):
 		var throne_rect = Rect2(
 			ROOM_WIDTH / 2 - 24,
 			ROOM_HEIGHT / 2 - 32,
@@ -313,5 +326,6 @@ func is_transitioning() -> bool:
 
 func mark_boss_defeated() -> void:
 	var room = get_current_room()
-	if room.get("is_boss", false):
+	if room.get("is_boss", false) and not _boss_defeated_rooms.has(_current_room_id):
+		_boss_defeated_rooms.append(_current_room_id)
 		queue_redraw()
