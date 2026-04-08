@@ -310,3 +310,8 @@ func _draw_room_details(room: Dictionary) -> void:
 
 func is_transitioning() -> bool:
 	return _is_transitioning
+
+func mark_boss_defeated() -> void:
+	var room = get_current_room()
+	if room.get("is_boss", false):
+		queue_redraw()
